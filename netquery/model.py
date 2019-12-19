@@ -3,7 +3,8 @@ import torch.nn as nn
 import numpy as np
 
 import random
-from netquery.graph import _reverse_relation
+from netquery.graph import _reverse_relation, Graph
+from netquery.decoders import BilinearDiagMetapathDecoder
 
 EPS = 10e-6
 
@@ -36,7 +37,7 @@ class MetapathEncoderDecoder(nn.Module):
         by the given metapath, where the pairs are given by the ordering in nodes1 and nodes2,
         i.e. the first node id in nodes1 is paired with the first node id in nodes2.
         """
-        return self.dec.forward(self.enc.forward(nodes1, rels[0][0]), 
+        return self.dec.forward(self.enc.forward(nodes1, rels[0][0]),
                 self.enc.forward(nodes2, rels[-1][-1]),
                 rels)
 
@@ -53,6 +54,35 @@ class MetapathEncoderDecoder(nn.Module):
         margin = torch.clamp(margin, min=0)
         loss = margin.mean()
         return loss 
+
+class TractORQueryEncoderDecoder(nn.Module):
+    """
+    Model for doing learning and reasoning over the TractOR model.
+    """
+
+    def __init__(self, graph, enc, path_dec):
+        super(TractORQueryEncoderDecoder, self).__init__()
+        self.enc = enc
+        self.graph = graph
+        self.cos = nn.CosineSimilarity
+        self.path_dec = path_dec
+        # TractOR only supported with distmult for now
+        assert(type(self.path_dec) == BilinearDiagMetapathDecoder)
+
+    def forward(self, formula, queries, source_nodes):
+        # TODO: do we need to consider each anchor only once if they're reused?
+        num_anchs = len(queries[0].anchor_nodes)
+        entity_vecs = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0])
+        for i in range(1, num_anchs):
+            embedding = self.enc.forward([query.anchor_nodes[i] for query in queries], formula.anchor_modes[i])
+            entity_vecs = entity_vecs * embedding
+
+        # Combined all the vectors, now push through relations
+        return self.path_dec.forward(
+            self.enc.forward(source_nodes, formula.target_mode),
+            entity_vecs,
+            list(set(formula.rels)) # Each relation only considered once
+        )
 
 class QueryEncoderDecoder(nn.Module):
     """
