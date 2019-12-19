@@ -84,6 +84,23 @@ class TractORQueryEncoderDecoder(nn.Module):
             list(set(formula.rels)) # Each relation only considered once
         )
 
+    def margin_loss(self, formula, queries, hard_negatives=False, margin=1):
+        if not "inter" in formula.query_type and hard_negatives:
+            raise Exception("Hard negative examples can only be used with intersection queries")
+        elif hard_negatives:
+            neg_nodes = [random.choice(query.hard_neg_samples) for query in queries]
+        elif formula.query_type == "1-chain":
+            neg_nodes = [random.choice(self.graph.full_lists[formula.target_mode]) for _ in queries]
+        else:
+            neg_nodes = [random.choice(query.neg_samples) for query in queries]
+
+        affs = self.forward(formula, queries, [query.target_node for query in queries])
+        neg_affs = self.forward(formula, queries, neg_nodes)
+        loss = margin - (affs - neg_affs)
+        loss = torch.clamp(loss, min=0)
+        loss = loss.mean()
+        return loss
+
 class QueryEncoderDecoder(nn.Module):
     """
     Encoder decoder model that reasons about edges, metapaths and intersections
