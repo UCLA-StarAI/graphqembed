@@ -65,7 +65,6 @@ log_file = args.log_dir + "/tractor-{data:s}-{embed_dim:d}-{lr:f}.log".format(
         lr=args.lr)
 model_file = args.model_dir + "/tractor-{data:s}-{embed_dim:d}-{lr:f}.log".format(
         data=args.data_dir.strip().split("/")[-1],
-        depth=args.depth,
         embed_dim=args.embed_dim,
         lr=args.lr)
 logger = setup_logging(log_file)
