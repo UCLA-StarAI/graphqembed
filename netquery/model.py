@@ -60,6 +60,17 @@ class TractORQueryEncoderDecoder(nn.Module):
     Model for doing learning and reasoning over the TractOR model.
     """
 
+    def flatten(self, rels):
+        # Inspect my first item, if it's a tuple flatten each thing
+        ret = []
+        for rel in rels:
+            if type(rel[0]) == tuple:
+                ret.extend(self.flatten(rel))
+            else:
+                ret.append(rel)
+
+        return ret
+
     def __init__(self, graph, enc, path_dec):
         super(TractORQueryEncoderDecoder, self).__init__()
         self.enc = enc
@@ -76,12 +87,13 @@ class TractORQueryEncoderDecoder(nn.Module):
         for i in range(1, num_anchs):
             embedding = self.enc.forward([query.anchor_nodes[i] for query in queries], formula.anchor_modes[i])
             entity_vecs = entity_vecs * embedding
-
+        if len(formula.rels) > 1:
+            print formula.rels
         # Combined all the vectors, now push through relations
         return self.path_dec.forward(
             self.enc.forward(source_nodes, formula.target_mode),
             entity_vecs,
-            list(set(formula.rels)) # Each relation only considered once
+            list(set(self.flatten(formula.rels))) # Each relation only considered once
         )
 
     def margin_loss(self, formula, queries, hard_negatives=False, margin=1):
