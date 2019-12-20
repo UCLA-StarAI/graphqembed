@@ -87,8 +87,6 @@ class TractORQueryEncoderDecoder(nn.Module):
         for i in range(1, num_anchs):
             embedding = self.enc.forward([query.anchor_nodes[i] for query in queries], formula.anchor_modes[i])
             entity_vecs = entity_vecs * embedding
-        if len(formula.rels) > 1:
-            print formula.rels
         # Combined all the vectors, now push through relations
         return self.path_dec.forward(
             self.enc.forward(source_nodes, formula.target_mode),
