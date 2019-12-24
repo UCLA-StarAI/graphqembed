@@ -4,9 +4,11 @@ from netquery.utils import *
 from netquery.bio.data_utils import load_graph
 from netquery.data_utils import load_queries_by_formula, load_test_queries_by_formula
 from netquery.model import QueryEncoderDecoder, TractORQueryEncoderDecoder
-from netquery.train_helpers import run_train
+from netquery.train_helpers import run_train, run_eval
 
 from torch import optim
+
+import sys
 
 parser = ArgumentParser()
 parser.add_argument("--embed_dim", type=int, default=128)
@@ -20,6 +22,7 @@ parser.add_argument("--tol", type=float, default=0.0001)
 parser.add_argument("--cuda", action='store_true')
 parser.add_argument("--log_dir", type=str, default="./")
 parser.add_argument("--model_dir", type=str, default="./")
+parser.add_argument("--load_model", type=str)
 parser.add_argument("--opt", type=str, default="adam")
 args = parser.parse_args()
 
@@ -54,6 +57,7 @@ enc_dec = TractORQueryEncoderDecoder(graph, enc, dec)
 if args.cuda:
     enc_dec.cuda()
 
+
 if args.opt == "sgd":
     optimizer = optim.SGD(filter(lambda p : p.requires_grad, enc_dec.parameters()), lr=args.lr, momentum=0)
 elif args.opt == "adam":
@@ -68,6 +72,12 @@ model_file = args.model_dir + "/tractor-{data:s}-{embed_dim:d}-{lr:f}.model".for
         embed_dim=args.embed_dim,
         lr=args.lr)
 logger = setup_logging(log_file)
+
+if args.load_model:
+    enc_dec.load_state_dict(torch.load(args.load_model))
+    enc_dec.eval()
+    run_eval(enc_dec, val_queries, 0, logger)
+    sys.exit()
 
 run_train(enc_dec, optimizer, train_queries, val_queries, test_queries, logger, max_burn_in=args.max_burn_in, val_every=args.val_every, model_file=model_file)
 torch.save(enc_dec.state_dict(), model_file)
