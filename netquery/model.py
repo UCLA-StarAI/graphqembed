@@ -85,7 +85,7 @@ class TractORQueryEncoderDecoder(nn.Module):
             return self.path_dec.forward(
                 self.enc.forward(source_nodes, formula.target_mode),
                 self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0]),
-                formula.rels)
+                self.flatten(formula.rels))
         # TODO: do we need to consider each anchor only once if they're reused?
         num_anchs = len(queries[0].anchor_nodes)
         entity_vecs = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0])
