@@ -91,13 +91,13 @@ class TractORQueryEncoderDecoder(nn.Module):
             #     self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0]),
             #     self.flatten(formula.rels))
         # TODO: do we need to consider each anchor only once if they're reused?
-        if formula.query_type == '1-chain':
-            p = self.path_dec.forward(
-            self.enc.forward(source_nodes, formula.target_mode),
-            self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0]),
-            list(set(self.flatten(formula.rels))) # Each relation only considered once
-        )
-            return 1 - (1-p) * (1-p)
+        # if formula.query_type == '1-chain':
+        #     p = self.path_dec.forward(
+        #     self.enc.forward(source_nodes, formula.target_mode),
+        #     self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0]),
+        #     list(set(self.flatten(formula.rels))) # Each relation only considered once
+        # )
+        #     return 1 - (1-p) * (1-p)
         # if formula.query_type == '2-inter':
         #     pass
 
@@ -110,7 +110,7 @@ class TractORQueryEncoderDecoder(nn.Module):
         return self.path_dec.forward(
             self.enc.forward(source_nodes, formula.target_mode),
             entity_vecs,
-            list(set(self.flatten(formula.rels))) # Each relation only considered once
+            list(set(self.flatten([_reverse_relation(r) for r in formula.rels]))) # Each relation only considered once
         )
 
     def margin_loss(self, formula, queries, hard_negatives=False, margin=1):

@@ -74,7 +74,7 @@ model_file = args.model_dir + "/tractor-{data:s}-{embed_dim:d}-{lr:f}.model".for
 logger = setup_logging(log_file)
 
 if args.load_model:
-    enc_dec.load_state_dict(torch.load(args.load_model))
+    enc_dec.load_state_dict(torch.load(args.load_model, map_location='cpu'))
     enc_dec.eval()
     run_eval(enc_dec, val_queries, 0, logger)
     sys.exit()
