@@ -80,13 +80,27 @@ class TractORQueryEncoderDecoder(nn.Module):
         # TractOR only supported with distmult for now
         assert(type(self.path_dec) == BilinearDiagMetapathDecoder)
 
+    def compute_2_inter_copy(self, formula, queries, source_nodes):
+        pass
+
     def forward(self, formula, queries, source_nodes):
-        if formula.query_type == '3-chain':
-            return self.path_dec.forward(
-                self.enc.forward(source_nodes, formula.target_mode),
-                self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0]),
-                self.flatten(formula.rels))
+        # if formula.query_type == '3-chain':
+        #     print "here"
+        # return self.path_dec.forward(
+            #     self.enc.forward(source_nodes, formula.target_mode),
+            #     self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0]),
+            #     self.flatten(formula.rels))
         # TODO: do we need to consider each anchor only once if they're reused?
+        if formula.query_type == '1-chain':
+            p = self.path_dec.forward(
+            self.enc.forward(source_nodes, formula.target_mode),
+            self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0]),
+            list(set(self.flatten(formula.rels))) # Each relation only considered once
+        )
+            return 1 - (1-p) * (1-p)
+        # if formula.query_type == '2-inter':
+        #     pass
+
         num_anchs = len(queries[0].anchor_nodes)
         entity_vecs = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0])
         for i in range(1, num_anchs):
