@@ -88,12 +88,12 @@ class TractOR2DQueryEncoderDecoder(nn.Module):
         dim1 = self.path_dec.forward(
             self.enc.forward(source_nodes, formula.target_mode, 1),
             self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 1),
-            (formula.rel[0],'1'))
+            (formula.rels[0],'1'))
 
         dim2 = self.path_dec.forward(
             self.enc.forward(source_nodes, formula.target_mode, 2),
             self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 2),
-            (formula.rel[0],'2'))
+            (formula.rels[0],'2'))
 
         source1 = self.enc.forward(source_nodes, formula.target_mode,1)
         source2 = self.enc.forward(source_nodes, formula.target_mode,2)
@@ -103,7 +103,7 @@ class TractOR2DQueryEncoderDecoder(nn.Module):
         dim12 = self.path_dec.forward(
             source1*source2*anchor1,
             anchor2,
-            [(formula.rel[0],'1'), (formula.rel[0]),'2']
+            [(formula.rels[0],'1'), (formula.rels[0]),'2']
         )
 
         assert(torch.allclose(1-(1-dim1) * (1-dim2), dim1 + dim2 - dim12))
