@@ -87,40 +87,30 @@ class TractOR2DQueryEncoderDecoder(nn.Module):
         # TODO: do we need to consider each anchor only once if they're reused?
         num_anchs = len(queries[0].anchor_nodes)
         entity_vecs = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0])
-        if formula.query_type == "1-chain":
-            dim1 = self.path_dec.forward(
-                self.enc.forward(source_nodes, formula.target_mode, 1),
-                self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 1),
-                (formula.rel[0],'1'))
+        dim1 = self.path_dec.forward(
+            self.enc.forward(source_nodes, formula.target_mode, 1),
+            self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 1),
+            (formula.rel[0],'1'))
 
-            dim2 = self.path_dec.forward(
-                self.enc.forward(source_nodes, formula.target_mode, 2),
-                self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 2),
-                (formula.rel[0],'2'))
+        dim2 = self.path_dec.forward(
+            self.enc.forward(source_nodes, formula.target_mode, 2),
+            self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 2),
+            (formula.rel[0],'2'))
 
-            source1 = self.enc.forward(source_nodes, formula.target_mode,1)
-            source2 = self.enc.forward(source_nodes, formula.target_mode,2)
-            anchor1 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 1)
-            anchor2 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 2)
+        source1 = self.enc.forward(source_nodes, formula.target_mode,1)
+        source2 = self.enc.forward(source_nodes, formula.target_mode,2)
+        anchor1 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 1)
+        anchor2 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 2)
 
-            dim12 = self.path_dec.forward(
-                source1*source2*anchor1,
-                anchor2,
-                [(formula.rel[0],'1'), (formula.rel[0]),'2']
-            )
-
-            assert(torch.allclose(1-(1-dim1) * (1-dim2), dim1 + dim2 - dim12))
-            return 1-(1-dim1) * (1-dim2)
-
-        for i in range(1, num_anchs):
-            embedding = self.enc.forward([query.anchor_nodes[i] for query in queries], formula.anchor_modes[i])
-            entity_vecs = entity_vecs * embedding
-        # Combined all the vectors, now push through relations
-        return self.path_dec.forward(
-            self.enc.forward(source_nodes, formula.target_mode),
-            entity_vecs,
-            list(set(self.flatten(formula.rels))) # Each relation only considered once
+        dim12 = self.path_dec.forward(
+            source1*source2*anchor1,
+            anchor2,
+            [(formula.rel[0],'1'), (formula.rel[0]),'2']
         )
+
+        assert(torch.allclose(1-(1-dim1) * (1-dim2), dim1 + dim2 - dim12))
+        return 1-(1-dim1) * (1-dim2)
+
 
     def margin_loss(self, formula, queries, hard_negatives=False, margin=1):
         if not "inter" in formula.query_type and hard_negatives:
