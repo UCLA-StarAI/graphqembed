@@ -97,7 +97,8 @@ def get_encoder(depth, graph, out_dims, feature_modules, cuda, two_dim=False):
     if depth == 0:
         if two_dim:
             enc = DirectEncoder2D(graph.features, feature_modules)
-        enc = DirectEncoder(graph.features, feature_modules)
+        else:
+            enc = DirectEncoder(graph.features, feature_modules)
     else:
         aggregator1 = MeanAggregator(graph.features)
         enc1 = Encoder(graph.features, 
