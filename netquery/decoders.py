@@ -208,6 +208,40 @@ class TransEMetapathDecoder(nn.Module):
         return embeds + self.vecs[rel].unsqueeze(1).expand(self.vecs[rel].size(0), embeds.size(1))
 
 
+class Bilinear2DDiagMetapathDecoder(nn.Module):
+    """
+    Decoder where the relationship score is given by a bilinear form
+    between the embeddings (i.e., one learned diagonal matrix per relationship type).
+    """
+
+    def __init__(self, relations, dims):
+        super(Bilinear2DDiagMetapathDecoder, self).__init__()
+        self.relations = relations
+        self.vecs = {}
+        for r1 in relations:
+            for r2 in relations[r1]:
+                rel1 = ((r1, r2[1], r2[0]), '1')
+                self.vecs[rel1] = nn.Parameter(torch.FloatTensor(dims[rel1[0][0]]/2))
+                init.uniform(self.vecs[rel1], a=-6.0/np.sqrt(dims[rel1[0][0]]/2), b=6.0/np.sqrt(dims[rel1[0][0]]/2))
+                self.register_parameter("_".join(rel1), self.vecs[rel1])
+
+                rel2 = ((r1, r2[1], r2[0]), '2')
+                self.vecs[rel2] = nn.Parameter(torch.FloatTensor(dims[rel2[0][0]]/2))
+                init.uniform(self.vecs[rel2], a=-6.0 / np.sqrt(dims[rel2[0][0]]/2),
+                             b=6.0 / np.sqrt(dims[rel2[0][0]]/2))
+                self.register_parameter("_".join(rel2), self.vecs[rel2])
+
+    def forward(self, embeds1, embeds2, rels):
+        acts = embeds1
+        for i_rel in rels:
+            acts = acts*self.vecs[i_rel].unsqueeze(1).expand(self.vecs[i_rel].size(0), embeds1.size(1))
+        acts = (acts*embeds2).sum(0)
+        return acts
+
+    def project(self, embeds, rel):
+        return embeds*self.vecs[rel].unsqueeze(1).expand(self.vecs[rel].size(0), embeds.size(1))
+
+
 class BilinearDiagMetapathDecoder(nn.Module):
     """
     Decoder where the relationship score is given by a bilinear form

@@ -3,8 +3,8 @@ import scipy
 import scipy.stats as stats
 import torch
 from sklearn.metrics import roc_auc_score
-from netquery.decoders import BilinearMetapathDecoder, TransEMetapathDecoder, BilinearDiagMetapathDecoder, SetIntersection, SimpleSetIntersection
-from netquery.encoders import DirectEncoder, Encoder
+from netquery.decoders import BilinearMetapathDecoder, TransEMetapathDecoder, BilinearDiagMetapathDecoder, SetIntersection, SimpleSetIntersection, Bilinear2DDiagMetapathDecoder
+from netquery.encoders import DirectEncoder, Encoder, DirectEncoder2D
 from netquery.aggregators import MeanAggregator
 import cPickle as pickle
 import logging
@@ -90,12 +90,14 @@ def eval_perc_queries(test_queries, enc_dec, batch_size=1000, hard_negatives=Fal
             perc_scores.extend(_get_perc_scores(batch_scores, lengths))
     return np.mean(perc_scores)
 
-def get_encoder(depth, graph, out_dims, feature_modules, cuda): 
+def get_encoder(depth, graph, out_dims, feature_modules, cuda, two_dim=False):
     if depth < 0 or depth > 3:
         raise Exception("Depth must be between 0 and 3 (inclusive)")
 
     if depth == 0:
-         enc = DirectEncoder(graph.features, feature_modules)
+        if two_dim:
+            enc = DirectEncoder2D(graph.features, feature_modules)
+        enc = DirectEncoder(graph.features, feature_modules)
     else:
         aggregator1 = MeanAggregator(graph.features)
         enc1 = Encoder(graph.features, 
@@ -132,6 +134,8 @@ def get_metapath_decoder(graph, out_dims, decoder):
         dec = TransEMetapathDecoder(graph.relations, out_dims)
     elif decoder == "bilinear-diag":
         dec = BilinearDiagMetapathDecoder(graph.relations, out_dims)
+    elif decoder == "bilinear-2d-diag":
+        dec = Bilinear2DDiagMetapathDecoder(graph.relations, out_dims)
     else:
         raise Exception("Metapath decoder not recognized.")
     return dec

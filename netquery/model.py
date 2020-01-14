@@ -4,7 +4,8 @@ import numpy as np
 
 import random
 from netquery.graph import _reverse_relation, Graph
-from netquery.decoders import BilinearDiagMetapathDecoder
+from netquery.decoders import BilinearDiagMetapathDecoder, Bilinear2DDiagMetapathDecoder
+from netquery.encoders import DirectEncoder2D
 
 EPS = 10e-6
 
@@ -53,7 +54,90 @@ class MetapathEncoderDecoder(nn.Module):
         margin = 1 - (affs - neg_affs)
         margin = torch.clamp(margin, min=0)
         loss = margin.mean()
-        return loss 
+        return loss
+
+
+class TractOR2DQueryEncoderDecoder(nn.Module):
+    """
+    Model for doing learning and reasoning over the 2 dimensional TractOR model.
+    """
+
+    def flatten(self, rels):
+        # Inspect my first item, if it's a tuple flatten each thing
+        ret = []
+        for rel in rels:
+            if type(rel[0]) == tuple:
+                ret.extend(self.flatten(rel))
+            else:
+                ret.append(rel)
+
+        return ret
+
+    def __init__(self, graph, enc, path_dec):
+        super(TractOR2DQueryEncoderDecoder, self).__init__()
+        self.enc = enc
+        self.graph = graph
+        self.cos = nn.CosineSimilarity
+        self.path_dec = path_dec
+        # TractOR only supported with distmult for now
+        assert(type(self.path_dec) == Bilinear2DDiagMetapathDecoder)
+        assert(type(self.enc) == DirectEncoder2D)
+
+    def forward(self, formula, queries, source_nodes):
+        # TODO: do we need to consider each anchor only once if they're reused?
+        num_anchs = len(queries[0].anchor_nodes)
+        entity_vecs = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0])
+        if formula.query_type == "1-chain":
+            dim1 = self.path_dec.forward(
+                self.enc.forward(source_nodes, formula.target_mode, 1),
+                self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 1),
+                (formula.rel[0],'1'))
+
+            dim2 = self.path_dec.forward(
+                self.enc.forward(source_nodes, formula.target_mode, 2),
+                self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 2),
+                (formula.rel[0],'2'))
+
+            source1 = self.enc.forward(source_nodes, formula.target_mode,1)
+            source2 = self.enc.forward(source_nodes, formula.target_mode,2)
+            anchor1 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 1)
+            anchor2 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 2)
+
+            dim12 = self.path_dec.forward(
+                source1*source2*anchor1,
+                anchor2,
+                [(formula.rel[0],'1'), (formula.rel[0]),'2']
+            )
+
+            assert(torch.allclose(1-(1-dim1) * (1-dim2), dim1 + dim2 - dim12))
+            return 1-(1-dim1) * (1-dim2)
+
+        for i in range(1, num_anchs):
+            embedding = self.enc.forward([query.anchor_nodes[i] for query in queries], formula.anchor_modes[i])
+            entity_vecs = entity_vecs * embedding
+        # Combined all the vectors, now push through relations
+        return self.path_dec.forward(
+            self.enc.forward(source_nodes, formula.target_mode),
+            entity_vecs,
+            list(set(self.flatten(formula.rels))) # Each relation only considered once
+        )
+
+    def margin_loss(self, formula, queries, hard_negatives=False, margin=1):
+        if not "inter" in formula.query_type and hard_negatives:
+            raise Exception("Hard negative examples can only be used with intersection queries")
+        elif hard_negatives:
+            neg_nodes = [random.choice(query.hard_neg_samples) for query in queries]
+        elif formula.query_type == "1-chain":
+            neg_nodes = [random.choice(self.graph.full_lists[formula.target_mode]) for _ in queries]
+        else:
+            neg_nodes = [random.choice(query.neg_samples) for query in queries]
+
+        affs = self.forward(formula, queries, [query.target_node for query in queries])
+        neg_affs = self.forward(formula, queries, neg_nodes)
+        loss = margin - (affs - neg_affs)
+        loss = torch.clamp(loss, min=0)
+        loss = loss.mean()
+        return loss
 
 class TractORQueryEncoderDecoder(nn.Module):
     """

@@ -44,6 +44,50 @@ class DirectEncoder(nn.Module):
         else:
             return self.features(nodes, mode, offset).t()
 
+class DirectEncoder2D(nn.Module):
+    """
+    Encodes a node as a embedding via direct lookup.
+    (i.e., this is just like basic node2vec or matrix factorization)
+    """
+    def __init__(self, features, feature_modules):
+        """
+        Initializes the model for a specific graph.
+
+        features         -- function mapping (node_list, features, offset) to feature values
+                            see torch.nn.EmbeddingBag and forward function below docs for offset meaning.
+        feature_modules  -- This should be a map from mode -> torch.nn.EmbeddingBag
+        """
+        super(DirectEncoder2D, self).__init__()
+        for name, module in feature_modules.iteritems():
+            self.add_module("feat-"+name, module)
+        self.features = features
+
+    def forward(self, nodes, mode, dim, offset=None, **kwargs):
+        """
+        Generates embeddings for a batch of nodes.
+
+        nodes     -- list of nodes
+        mode      -- string desiginating the mode of the nodes
+        dim       -- Whether to return dimension 1 or 2 of the encoding
+        offsets   -- specifies how the embeddings are aggregated.
+                     see torch.nn.EmbeddingBag for format.
+                     No aggregation if offsets is None
+        """
+
+        assert dim == 1 or dim == 2
+        if offset is None:
+            embeds = self.features(nodes, mode).t()
+            norm = embeds.norm(p=2, dim=0, keepdim=True)
+            embeds = embeds.div(norm.expand_as(embeds))
+            dim_size = embeds.shape[1]
+            if dim == 1:
+                return embeds[:, :dim_size/2]
+            elif dim == 2:
+                return embeds[:, dim_size/2:]
+
+        else:
+            raise NotImplementedError()
+
 class Encoder(nn.Module):
     """
     Encodes a node's using a GCN/GraphSage approach

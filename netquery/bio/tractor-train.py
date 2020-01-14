@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 from netquery.utils import *
 from netquery.bio.data_utils import load_graph
 from netquery.data_utils import load_queries_by_formula, load_test_queries_by_formula
-from netquery.model import QueryEncoderDecoder, TractORQueryEncoderDecoder
+from netquery.model import TractORQueryEncoderDecoder, TractOR2DQueryEncoderDecoder
 from netquery.train_helpers import run_train, run_eval
 
 from torch import optim
@@ -24,6 +24,7 @@ parser.add_argument("--log_dir", type=str, default="./")
 parser.add_argument("--model_dir", type=str, default="./")
 parser.add_argument("--load_model", type=str)
 parser.add_argument("--opt", type=str, default="adam")
+parser.add_argument("--two_dims", type=bool, action="store_true")
 args = parser.parse_args()
 
 print "Loading graph data.."
@@ -50,10 +51,16 @@ for i in range(2,4):
     test_queries["full_neg"].update(i_test_queries["full_neg"])
 
 
-enc = get_encoder(0, graph, out_dims, feature_modules, args.cuda)
-dec = get_metapath_decoder(graph, out_dims, 'bilinear-diag')
+if args.two_dims:
+    enc = get_encoder(0, graph, out_dims, feature_modules, args.cuda, two_dim=True)
+    dec = get_metapath_decoder(graph, out_dims, 'bilinear-2d-diag')
 
-enc_dec = TractORQueryEncoderDecoder(graph, enc, dec)
+    enc_dec = TractOR2DQueryEncoderDecoder(graph, enc, dec)
+else:
+    enc = get_encoder(0, graph, out_dims, feature_modules, args.cuda)
+    dec = get_metapath_decoder(graph, out_dims, 'bilinear-diag')
+
+    enc_dec = TractORQueryEncoderDecoder(graph, enc, dec)
 if args.cuda:
     enc_dec.cuda()
 
@@ -74,7 +81,7 @@ model_file = args.model_dir + "/tractor-{data:s}-{embed_dim:d}-{lr:f}.model".for
 logger = setup_logging(log_file)
 
 if args.load_model:
-    enc_dec.load_state_dict(torch.load(args.load_model))
+    enc_dec.load_state_dict(torch.load(args.load_model, map_location='cpu'))
     enc_dec.eval()
     run_eval(enc_dec, val_queries, 0, logger)
     sys.exit()
