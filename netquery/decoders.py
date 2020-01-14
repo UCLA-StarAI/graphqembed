@@ -223,13 +223,13 @@ class Bilinear2DDiagMetapathDecoder(nn.Module):
                 rel1 = ((r1, r2[1], r2[0]), '1')
                 self.vecs[rel1] = nn.Parameter(torch.FloatTensor(dims[rel1[0][0]]/2))
                 init.uniform(self.vecs[rel1], a=-6.0/np.sqrt(dims[rel1[0][0]]/2), b=6.0/np.sqrt(dims[rel1[0][0]]/2))
-                self.register_parameter("_".join(rel1), self.vecs[rel1])
+                self.register_parameter("_".join(list(rel1[0]) + ['1']), self.vecs[rel1])
 
                 rel2 = ((r1, r2[1], r2[0]), '2')
                 self.vecs[rel2] = nn.Parameter(torch.FloatTensor(dims[rel2[0][0]]/2))
                 init.uniform(self.vecs[rel2], a=-6.0 / np.sqrt(dims[rel2[0][0]]/2),
                              b=6.0 / np.sqrt(dims[rel2[0][0]]/2))
-                self.register_parameter("_".join(rel2), self.vecs[rel2])
+                self.register_parameter("_".join(list(rel2[0]) + ['2']), self.vecs[rel2])
 
     def forward(self, embeds1, embeds2, rels):
         acts = embeds1
