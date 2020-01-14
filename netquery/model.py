@@ -103,7 +103,7 @@ class TractOR2DQueryEncoderDecoder(nn.Module):
         dim12 = self.path_dec.forward(
             source1*source2*anchor1,
             anchor2,
-            [(formula.rels[0],'1'), (formula.rels[0]),'2']
+            [(formula.rels[0],'1'), (formula.rels[0],'2')]
         )
 
         assert(torch.allclose(1-(1-dim1) * (1-dim2), dim1 + dim2 - dim12))
