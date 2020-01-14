@@ -70,14 +70,16 @@ if args.opt == "sgd":
 elif args.opt == "adam":
     optimizer = optim.Adam(filter(lambda p : p.requires_grad, enc_dec.parameters()), lr=args.lr)
     
-log_file = args.log_dir + "/tractor-{data:s}-{embed_dim:d}-{lr:f}.log".format(
+log_file = args.log_dir + "/tractor-{data:s}-{embed_dim:d}-{lr:f}{d2:s}.log".format(
         data=args.data_dir.strip().split("/")[-1],
         embed_dim=args.embed_dim,
-        lr=args.lr)
-model_file = args.model_dir + "/tractor-{data:s}-{embed_dim:d}-{lr:f}.model".format(
+        lr=args.lr,
+        d2="-2d" if args.two_dims else "")
+model_file = args.model_dir + "/tractor-{data:s}-{embed_dim:d}-{lr:f}{d2:s}.model".format(
         data=args.data_dir.strip().split("/")[-1],
         embed_dim=args.embed_dim,
-        lr=args.lr)
+        lr=args.lr,
+        d2="-2d" if args.two_dims else "")
 logger = setup_logging(log_file)
 
 if args.load_model:
