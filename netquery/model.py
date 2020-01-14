@@ -106,7 +106,7 @@ class TractOR2DQueryEncoderDecoder(nn.Module):
             [(formula.rels[0],'1'), (formula.rels[0],'2')]
         )
 
-        assert(torch.allclose(1-(1-dim1) * (1-dim2), dim1 + dim2 - dim12))
+        assert(torch.max((1-(1-dim1) * (1-dim2)) - (dim1 + dim2 - dim12)) < 1e-5)
         return 1-(1-dim1) * (1-dim2)
 
 
