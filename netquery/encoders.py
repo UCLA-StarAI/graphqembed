@@ -79,7 +79,7 @@ class DirectEncoder2D(nn.Module):
             embeds = self.features(nodes, mode).t()
             norm = embeds.norm(p=2, dim=0, keepdim=True)
             embeds = embeds.div(norm.expand_as(embeds))
-            dim_size = embeds.shape[1]
+            dim_size = embeds.shape[0]
             if dim == 1:
                 return embeds[:dim_size/2, :]
             elif dim == 2:
