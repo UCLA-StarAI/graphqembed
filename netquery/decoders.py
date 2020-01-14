@@ -233,6 +233,8 @@ class Bilinear2DDiagMetapathDecoder(nn.Module):
 
     def forward(self, embeds1, embeds2, rels):
         acts = embeds1
+        print(acts.shape)
+        print(self.vecs[rels[0]].shape)
         for i_rel in rels:
             acts = acts*self.vecs[i_rel].unsqueeze(1).expand(self.vecs[i_rel].size(0), embeds1.size(1))
         acts = (acts*embeds2).sum(0)
