@@ -81,9 +81,9 @@ class DirectEncoder2D(nn.Module):
             embeds = embeds.div(norm.expand_as(embeds))
             dim_size = embeds.shape[1]
             if dim == 1:
-                return embeds[:, :dim_size/2]
+                return embeds[:dim_size/2, :]
             elif dim == 2:
-                return embeds[:, dim_size/2:]
+                return embeds[dim_size/2:, :]
 
         else:
             raise NotImplementedError()
