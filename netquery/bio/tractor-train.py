@@ -24,7 +24,7 @@ parser.add_argument("--log_dir", type=str, default="./")
 parser.add_argument("--model_dir", type=str, default="./")
 parser.add_argument("--load_model", type=str)
 parser.add_argument("--opt", type=str, default="adam")
-parser.add_argument("--two_dims", type=bool, action="store_true")
+parser.add_argument("--two_dims", action="store_true")
 args = parser.parse_args()
 
 print "Loading graph data.."
