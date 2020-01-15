@@ -158,7 +158,7 @@ class TractOR2DQueryEncoderDecoder(nn.Module):
             )
 
             # return r1s1 + r1s2 + r2s1 + r2s2 - r1s1s2 - r1r2s1 - r2s1s2 - r1r2s2 + r1r2s1s2
-            return r1s1 + r2s2
+            return -r1s1 - r2s2
         else:
             dim1 = self.path_dec.forward(
                 self.enc.forward(source_nodes, formula.target_mode, 1),
