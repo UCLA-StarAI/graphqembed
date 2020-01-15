@@ -7,7 +7,7 @@ from netquery.graph import _reverse_relation, Graph
 from netquery.decoders import BilinearDiagMetapathDecoder, Bilinear2DDiagMetapathDecoder
 from netquery.encoders import DirectEncoder2D
 
-EPs = 10e-6
+EPS = 10e-6
 
 """
 End-to-end autoencoder models for representation learning on
@@ -22,7 +22,7 @@ class MetapathEncoderDecoder(nn.Module):
     def __init__(self, graph, enc, dec):
         """
         graph -- simple graph object; see graph.py
-        enc --- an encoder module that generates embeddings (see encoders.py) 
+        enc --- an encoder module that generates embeddings (see encoders.py)
         dec --- an decoder module that predicts compositional relationships, i.e. metapaths, between nodes given embeddings. (see decoders.py)
                 Note that the decoder must be an *compositional/metapath* decoder (i.e., with name Metapath*.py)
         """
@@ -33,7 +33,7 @@ class MetapathEncoderDecoder(nn.Module):
 
     def forward(self, nodes1, nodes2, rels):
         """
-        returns a vector of 'relationship scores' for pairs of nodes being connected by the given metapath (sequence of relations).
+        Returns a vector of 'relationship scores' for pairs of nodes being connected by the given metapath (sequence of relations).
         Essentially, the returned scores are the predicted likelihood of the node pairs being connected
         by the given metapath, where the pairs are given by the ordering in nodes1 and nodes2,
         i.e. the first node id in nodes1 is paired with the first node id in nodes2.
@@ -44,7 +44,7 @@ class MetapathEncoderDecoder(nn.Module):
 
     def margin_loss(self, nodes1, nodes2, rels):
         """
-        standard max-margin based loss function.
+        Standard max-margin based loss function.
         Maximizes relationaship scores for true pairs vs negative samples.
         """
         affs = self.forward(nodes1, nodes2, rels)
@@ -57,9 +57,9 @@ class MetapathEncoderDecoder(nn.Module):
         return loss
 
 
-class TractOr2DQueryEncoderDecoder(nn.Module):
+class TractOR2DQueryEncoderDecoder(nn.Module):
     """
-    Model for doing learning and reasoning over the 2 dimensional TractOr model.
+    Model for doing learning and reasoning over the 2 dimensional TractOR model.
     """
 
     def flatten(self, rels):
@@ -74,23 +74,23 @@ class TractOr2DQueryEncoderDecoder(nn.Module):
         return ret
 
     def __init__(self, graph, enc, path_dec):
-        super(TractOr2DQueryEncoderDecoder, self).__init__()
+        super(TractOR2DQueryEncoderDecoder, self).__init__()
         self.enc = enc
         self.graph = graph
-        self.cos = nn.Cosinesimilarity
+        self.cos = nn.CosineSimilarity
         self.path_dec = path_dec
-        # TractOr only supported with distmult for now
+        # TractOR only supported with distmult for now
         assert(type(self.path_dec) == Bilinear2DDiagMetapathDecoder)
         assert(type(self.enc) == DirectEncoder2D)
 
     def forward(self, formula, queries, source_nodes):
         # TODO: do we need to consider each anchor only once if they're reused?
         if formula.query_type == "2-inter":
-            # r1 = r1, E1(a), E1(t)
-            # r2 = r2, E2(a), E2(t)
-            # s1 = s1, E1(b), E1(t)
-            # s2 = s2, E2(b), E2(t)
-            # P(Q) = r1s1 + r1s2 + r2s1 + r2s2 - r1s1s2 - r1r2s1 - r2s1s2 - r1r2s2 + r1r2s1s2
+            # R1 = R1, E1(a), E1(t)
+            # R2 = R2, E2(a), E2(t)
+            # S1 = S1, E1(b), E1(t)
+            # S2 = S2, E2(b), E2(t)
+            # P(Q) = R1S1 + R1S2 + R2S1 + R2S2 - R1S1S2 - R1R2S1 - R2S1S2 - R1R2S2 + R1R2S1S2
             source1 = self.enc.forward(source_nodes, formula.target_mode,1)
             source2 = self.enc.forward(source_nodes, formula.target_mode,2)
             a1 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 1)
@@ -203,9 +203,9 @@ class TractOr2DQueryEncoderDecoder(nn.Module):
         loss = loss.mean()
         return loss
 
-class TractOrQueryEncoderDecoder(nn.Module):
+class TractORQueryEncoderDecoder(nn.Module):
     """
-    Model for doing learning and reasoning over the TractOr model.
+    Model for doing learning and reasoning over the TractOR model.
     """
 
     def flatten(self, rels):
@@ -220,12 +220,12 @@ class TractOrQueryEncoderDecoder(nn.Module):
         return ret
 
     def __init__(self, graph, enc, path_dec):
-        super(TractOrQueryEncoderDecoder, self).__init__()
+        super(TractORQueryEncoderDecoder, self).__init__()
         self.enc = enc
         self.graph = graph
-        self.cos = nn.Cosinesimilarity
+        self.cos = nn.CosineSimilarity
         self.path_dec = path_dec
-        # TractOr only supported with distmult for now
+        # TractOR only supported with distmult for now
         assert(type(self.path_dec) == BilinearDiagMetapathDecoder)
 
     def forward(self, formula, queries, source_nodes):
@@ -270,13 +270,13 @@ class QueryEncoderDecoder(nn.Module):
         self.path_dec = path_dec
         self.inter_dec = inter_dec
         self.graph = graph
-        self.cos = nn.Cosinesimilarity(dim=0)
+        self.cos = nn.CosineSimilarity(dim=0)
 
     def forward(self, formula, queries, source_nodes):
         if formula.query_type == "1-chain" or formula.query_type == "2-chain" or formula.query_type == "3-chain":
             # a chain is simply a call to the path decoder
             return self.path_dec.forward(
-                    self.enc.forward(source_nodes, formula.target_mode), 
+                    self.enc.forward(source_nodes, formula.target_mode),
                     self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0]),
                     formula.rels)
         elif formula.query_type == "2-inter" or formula.query_type == "3-inter" or formula.query_type == "3-inter_chain":
@@ -329,19 +329,19 @@ class QueryEncoderDecoder(nn.Module):
         loss = margin - (affs - neg_affs)
         loss = torch.clamp(loss, min=0)
         loss = loss.mean()
-        return loss 
+        return loss
 
-class softAndEncoderDecoder(nn.Module):
+class SoftAndEncoderDecoder(nn.Module):
     """
     Encoder decoder model that reasons about edges, metapaths and intersections
     """
 
     def __init__(self, graph, enc, path_dec):
-        super(softAndEncoderDecoder, self).__init__()
+        super(SoftAndEncoderDecoder, self).__init__()
         self.enc = enc
         self.path_dec = path_dec
         self.graph = graph
-        self.cos = nn.Cosinesimilarity(dim=0)
+        self.cos = nn.CosineSimilarity(dim=0)
 
     def forward(self, formula, queries, source_nodes):
         if formula.query_type == "1-chain":
