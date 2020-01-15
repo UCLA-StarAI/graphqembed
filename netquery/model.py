@@ -7,7 +7,7 @@ from netquery.graph import _reverse_relation, Graph
 from netquery.decoders import BilinearDiagMetapathDecoder, Bilinear2DDiagMetapathDecoder
 from netquery.encoders import DirectEncoder2D
 
-EPS = 10e-6
+EPs = 10e-6
 
 """
 End-to-end autoencoder models for representation learning on
@@ -33,7 +33,7 @@ class MetapathEncoderDecoder(nn.Module):
 
     def forward(self, nodes1, nodes2, rels):
         """
-        Returns a vector of 'relationship scores' for pairs of nodes being connected by the given metapath (sequence of relations).
+        returns a vector of 'relationship scores' for pairs of nodes being connected by the given metapath (sequence of relations).
         Essentially, the returned scores are the predicted likelihood of the node pairs being connected
         by the given metapath, where the pairs are given by the ordering in nodes1 and nodes2,
         i.e. the first node id in nodes1 is paired with the first node id in nodes2.
@@ -44,7 +44,7 @@ class MetapathEncoderDecoder(nn.Module):
 
     def margin_loss(self, nodes1, nodes2, rels):
         """
-        Standard max-margin based loss function.
+        standard max-margin based loss function.
         Maximizes relationaship scores for true pairs vs negative samples.
         """
         affs = self.forward(nodes1, nodes2, rels)
@@ -57,9 +57,9 @@ class MetapathEncoderDecoder(nn.Module):
         return loss
 
 
-class TractOR2DQueryEncoderDecoder(nn.Module):
+class TractOr2DQueryEncoderDecoder(nn.Module):
     """
-    Model for doing learning and reasoning over the 2 dimensional TractOR model.
+    Model for doing learning and reasoning over the 2 dimensional TractOr model.
     """
 
     def flatten(self, rels):
@@ -74,42 +74,116 @@ class TractOR2DQueryEncoderDecoder(nn.Module):
         return ret
 
     def __init__(self, graph, enc, path_dec):
-        super(TractOR2DQueryEncoderDecoder, self).__init__()
+        super(TractOr2DQueryEncoderDecoder, self).__init__()
         self.enc = enc
         self.graph = graph
-        self.cos = nn.CosineSimilarity
+        self.cos = nn.Cosinesimilarity
         self.path_dec = path_dec
-        # TractOR only supported with distmult for now
+        # TractOr only supported with distmult for now
         assert(type(self.path_dec) == Bilinear2DDiagMetapathDecoder)
         assert(type(self.enc) == DirectEncoder2D)
 
     def forward(self, formula, queries, source_nodes):
         # TODO: do we need to consider each anchor only once if they're reused?
-        dim1 = self.path_dec.forward(
-            self.enc.forward(source_nodes, formula.target_mode, 1),
-            self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 1),
-            [(formula.rels[0],'1')])
+        if formula.query_type == "2-inter":
+            # r1 = r1, E1(a), E1(t)
+            # r2 = r2, E2(a), E2(t)
+            # s1 = s1, E1(b), E1(t)
+            # s2 = s2, E2(b), E2(t)
+            # P(Q) = r1s1 + r1s2 + r2s1 + r2s2 - r1s1s2 - r1r2s1 - r2s1s2 - r1r2s2 + r1r2s1s2
+            source1 = self.enc.forward(source_nodes, formula.target_mode,1)
+            source2 = self.enc.forward(source_nodes, formula.target_mode,2)
+            a1 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 1)
+            a2 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 2)
+            b1 = self.enc.forward([query.anchor_nodes[1] for query in queries], formula.anchor_modes[1], 1)
+            b2 = self.enc.forward([query.anchor_nodes[1] for query in queries], formula.anchor_modes[1], 2)
 
-        dim2 = self.path_dec.forward(
-            self.enc.forward(source_nodes, formula.target_mode, 2),
-            self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 2),
-            [(formula.rels[0],'2')])
+            r1 = (formula.rels[0], '1')
+            r2 = (formula.rels[0], '2')
+            s1 = (formula.rels[1], '1')
+            s2 = (formula.rels[1], '2')
 
-        source1 = self.enc.forward(source_nodes, formula.target_mode,1)
-        source2 = self.enc.forward(source_nodes, formula.target_mode,2)
-        anchor1 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 1)
-        anchor2 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 2)
+            r1s1 = self.path_dec.forward(
+                source1 * a1,
+                b1,
+                [r1,s1]
+            )
 
-        dim12 = self.path_dec.forward(
-            source1*source2*anchor1,
-            anchor2,
-            [(formula.rels[0],'1'), (formula.rels[0],'2')]
-        )
+            r1s2 = self.path_dec.forward(
+                source1 * source2 * a1,
+                b2,
+                [r1,s2]
+            )
 
-        print dim1 + dim2 - dim12 - (1-(1-dim1) * (1-dim2))
-        print torch.max((1-(1-dim1) * (1-dim2)) - (dim1 + dim2 - dim12))
-        assert(torch.max((1-(1-dim1) * (1-dim2)) - (dim1 + dim2 - dim12)) < 1e-5)
-        return 1-(1-dim1) * (1-dim2)
+            r2s1 = self.path_dec.forward(
+                source1 * source2 * a2,
+                b1,
+                [r2,s1]
+            )
+
+            r2s2 = self.path_dec.forward(
+                source2 * a2,
+                b2,
+                [r2,s2]
+            )
+
+            r1s1s2 = self.path_dec.forward(
+                source1 * source2 * a1 * b1,
+                b2,
+                [r1,s1,s2]
+            )
+
+            r1r2s1 = self.path_dec.forward(
+                source1 * source2 * a1 * a2,
+                b1,
+                [r1,r2,s1]
+            )
+
+            r2s1s2 = self.path_dec.forward(
+                source1 * source2 * a2 * b1,
+                b2,
+                [r2,s1,s2]
+            )
+
+            r1r2s2 = self.path_dec.forward(
+                source1 * source2 * a1 * a2,
+                b2,
+                [r1,r2,s2]
+            )
+
+            r1r2s1s2 = self.path_dec.forward(
+                source1 * source2 * a1 * a2 * b1,
+                b2,
+                [r1,r2,s1,s2]
+            )
+
+            return r1s1 + r1s2 + r2s1 + r2s2 - r1s1s2 - r1r2s1 - r2s1s2 - r1r2s2 + r1r2s1s2
+        else:
+            dim1 = self.path_dec.forward(
+                self.enc.forward(source_nodes, formula.target_mode, 1),
+                self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 1),
+                [(formula.rels[0],'1')])
+
+            dim2 = self.path_dec.forward(
+                self.enc.forward(source_nodes, formula.target_mode, 2),
+                self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 2),
+                [(formula.rels[0],'2')])
+
+            # source1 = self.enc.forward(source_nodes, formula.target_mode,1)
+            # source2 = self.enc.forward(source_nodes, formula.target_mode,2)
+            # anchor1 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 1)
+            # anchor2 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 2)
+            #
+            # dim12 = self.path_dec.forward(
+            #     source1*source2*anchor1,
+            #     anchor2,
+            #     [(formula.rels[0],'1'), (formula.rels[0],'2')]
+            # )
+
+            # print dim1 + dim2 - dim12 - (1-(1-dim1) * (1-dim2))
+            # print torch.max((1-(1-dim1) * (1-dim2)) - (dim1 + dim2 - dim12))
+            # assert(torch.max((1-(1-dim1) * (1-dim2)) - (dim1 + dim2 - dim12)) < 1e-5)
+            return 1-(1-dim1) * (1-dim2)
 
 
     def margin_loss(self, formula, queries, hard_negatives=False, margin=1):
@@ -129,9 +203,9 @@ class TractOR2DQueryEncoderDecoder(nn.Module):
         loss = loss.mean()
         return loss
 
-class TractORQueryEncoderDecoder(nn.Module):
+class TractOrQueryEncoderDecoder(nn.Module):
     """
-    Model for doing learning and reasoning over the TractOR model.
+    Model for doing learning and reasoning over the TractOr model.
     """
 
     def flatten(self, rels):
@@ -146,12 +220,12 @@ class TractORQueryEncoderDecoder(nn.Module):
         return ret
 
     def __init__(self, graph, enc, path_dec):
-        super(TractORQueryEncoderDecoder, self).__init__()
+        super(TractOrQueryEncoderDecoder, self).__init__()
         self.enc = enc
         self.graph = graph
-        self.cos = nn.CosineSimilarity
+        self.cos = nn.Cosinesimilarity
         self.path_dec = path_dec
-        # TractOR only supported with distmult for now
+        # TractOr only supported with distmult for now
         assert(type(self.path_dec) == BilinearDiagMetapathDecoder)
 
     def forward(self, formula, queries, source_nodes):
@@ -196,7 +270,7 @@ class QueryEncoderDecoder(nn.Module):
         self.path_dec = path_dec
         self.inter_dec = inter_dec
         self.graph = graph
-        self.cos = nn.CosineSimilarity(dim=0)
+        self.cos = nn.Cosinesimilarity(dim=0)
 
     def forward(self, formula, queries, source_nodes):
         if formula.query_type == "1-chain" or formula.query_type == "2-chain" or formula.query_type == "3-chain":
@@ -257,17 +331,17 @@ class QueryEncoderDecoder(nn.Module):
         loss = loss.mean()
         return loss 
 
-class SoftAndEncoderDecoder(nn.Module):
+class softAndEncoderDecoder(nn.Module):
     """
     Encoder decoder model that reasons about edges, metapaths and intersections
     """
 
     def __init__(self, graph, enc, path_dec):
-        super(SoftAndEncoderDecoder, self).__init__()
+        super(softAndEncoderDecoder, self).__init__()
         self.enc = enc
         self.path_dec = path_dec
         self.graph = graph
-        self.cos = nn.CosineSimilarity(dim=0)
+        self.cos = nn.Cosinesimilarity(dim=0)
 
     def forward(self, formula, queries, source_nodes):
         if formula.query_type == "1-chain":
