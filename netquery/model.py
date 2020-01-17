@@ -169,7 +169,7 @@ class TractOR2DQueryEncoderDecoder(nn.Module):
 
             print((r1*a1*b1*s1*c1).sum(0) - r1s1)
             diff_comp = (r1*a1*b1*s1*c1 + r1*a1*c1*s2*b2*c2 + r2*a2*c2*s1*b1*c1 + r2*a2*s2*b2*c2 - r1*a1*s1*b1*s2*b2*c1*c2 \
-                         - r1*a1*s1*b1*r2*a2*c1*c2 - r2*a2*s1*b1*s2*b2*c1*c2 -r1*a1*r2*a2*s1*b1*c1*c2 \
+                         - r1*a1*s1*b1*r2*a2*c1*c2 - r2*a2*s1*b1*s2*b2*c1*c2 -r1*a1*r2*a2*s2*b2*c1*c2 \
                          + r1*a1*r2*a2*s1*b1*s2*b2*c1*c2).sum(0)
 
             first_comp = r1s1 + r1s2 + r2s1 + r2s2 - r1s1s2 - r1r2s1 - r2s1s2 - r1r2s2 + r1r2s1s2
@@ -187,21 +187,18 @@ class TractOR2DQueryEncoderDecoder(nn.Module):
                 self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 2),
                 [(formula.rels[0],'2')])
 
-            # source1 = self.enc.forward(source_nodes, formula.target_mode,1)
-            # source2 = self.enc.forward(source_nodes, formula.target_mode,2)
-            # anchor1 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 1)
-            # anchor2 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 2)
-            #
-            # dim12 = self.path_dec.forward(
-            #     source1*source2*anchor1,
-            #     anchor2,
-            #     [(formula.rels[0],'1'), (formula.rels[0],'2')]
-            # )
+            source1 = self.enc.forward(source_nodes, formula.target_mode,1)
+            source2 = self.enc.forward(source_nodes, formula.target_mode,2)
+            anchor1 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 1)
+            anchor2 = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0], 2)
 
-            # print dim1 + dim2 - dim12 - (1-(1-dim1) * (1-dim2))
-            # print torch.max((1-(1-dim1) * (1-dim2)) - (dim1 + dim2 - dim12))
-            # assert(torch.max((1-(1-dim1) * (1-dim2)) - (dim1 + dim2 - dim12)) < 1e-5)
-            return 1-(1-dim1) * (1-dim2)
+            dim12 = self.path_dec.forward(
+                source1*source2*anchor1,
+                anchor2,
+                [(formula.rels[0],'1'), (formula.rels[0],'2')]
+            )
+
+            return dim1 + dim2 - dim12
 
 
     def margin_loss(self, formula, queries, hard_negatives=False, margin=1):
