@@ -167,13 +167,11 @@ class TractOR2DQueryEncoderDecoder(nn.Module):
             s1 = vecs[s1].unsqueeze(1).expand(vecs[s1].size(0), a1.size(1))
             s2 = vecs[s2].unsqueeze(1).expand(vecs[s2].size(0), a1.size(1))
 
-            print((r1*a1*b1*s1*c1).sum(0) - r1s1)
             diff_comp = (r1*a1*b1*s1*c1 + r1*a1*c1*s2*b2*c2 + r2*a2*c2*s1*b1*c1 + r2*a2*s2*b2*c2 - r1*a1*s1*b1*s2*b2*c1*c2 \
                          - r1*a1*s1*b1*r2*a2*c1*c2 - r2*a2*s1*b1*s2*b2*c1*c2 -r1*a1*r2*a2*s2*b2*c1*c2 \
                          + r1*a1*r2*a2*s1*b1*s2*b2*c1*c2).sum(0)
 
             first_comp = r1s1 + r1s2 + r2s1 + r2s2 - r1s1s2 - r1r2s1 - r2s1s2 - r1r2s2 + r1r2s1s2
-            # print diff_comp - first_comp
             return diff_comp
             # return -r1s1 - r2s2
         else:
