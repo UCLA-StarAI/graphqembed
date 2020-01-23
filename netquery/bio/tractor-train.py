@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 from netquery.utils import *
 from netquery.bio.data_utils import load_graph
 from netquery.data_utils import load_queries_by_formula, load_test_queries_by_formula
-from netquery.model import TractORQueryEncoderDecoder, TractOR2DQueryEncoderDecoder
+from netquery.model import TractORQueryEncoderDecoder, TractOR2DQueryEncoderDecoder, TractORSafeQueryEncoderDecoder
 from netquery.train_helpers import run_train, run_eval
 
 from torch import optim
@@ -25,6 +25,7 @@ parser.add_argument("--model_dir", type=str, default="./")
 parser.add_argument("--load_model", type=str)
 parser.add_argument("--opt", type=str, default="adam")
 parser.add_argument("--two_dims", action="store_true")
+parser.add_argument("--safe", action="store_true")
 args = parser.parse_args()
 
 print "Loading graph data.."
@@ -56,6 +57,11 @@ if args.two_dims:
     dec = get_metapath_decoder(graph, out_dims, 'bilinear-2d-diag')
 
     enc_dec = TractOR2DQueryEncoderDecoder(graph, enc, dec)
+elif args.safe:
+    enc = get_encoder(0, graph, out_dims, feature_modules, args.cuda)
+    dec = get_metapath_decoder(graph, out_dims, 'tractor')
+
+    enc_dec = TractORSafeQueryEncoderDecoder(graph, enc, dec)
 else:
     enc = get_encoder(0, graph, out_dims, feature_modules, args.cuda)
     dec = get_metapath_decoder(graph, out_dims, 'bilinear-diag')
@@ -70,16 +76,18 @@ if args.opt == "sgd":
 elif args.opt == "adam":
     optimizer = optim.Adam(filter(lambda p : p.requires_grad, enc_dec.parameters()), lr=args.lr)
     
-log_file = args.log_dir + "/tractor-{data:s}-{embed_dim:d}-{lr:f}{d2:s}.log".format(
+log_file = args.log_dir + "/tractor-{data:s}-{embed_dim:d}-{lr:f}{d2:s}{sf:s}.log".format(
         data=args.data_dir.strip().split("/")[-1],
         embed_dim=args.embed_dim,
         lr=args.lr,
-        d2="-2d" if args.two_dims else "")
-model_file = args.model_dir + "/tractor-{data:s}-{embed_dim:d}-{lr:f}{d2:s}.model".format(
+        d2="-2d" if args.two_dims else "",
+        sf="-safe" if args.safe else "")
+model_file = args.model_dir + "/tractor-{data:s}-{embed_dim:d}-{lr:f}{d2:s}{sf:s}.model".format(
         data=args.data_dir.strip().split("/")[-1],
         embed_dim=args.embed_dim,
         lr=args.lr,
-        d2="-2d" if args.two_dims else "")
+        d2="-2d" if args.two_dims else "",
+        sf="-safe" if args.safe else "")
 logger = setup_logging(log_file)
 
 if args.load_model:

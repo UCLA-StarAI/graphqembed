@@ -270,6 +270,33 @@ class BilinearDiagMetapathDecoder(nn.Module):
         return embeds*self.vecs[rel].unsqueeze(1).expand(self.vecs[rel].size(0), embeds.size(1))
 
 
+class TractORMetapathDecoder(nn.Module):
+    """
+    Decoder for an n-dimensional TractOR model (no mixtures)
+    """
+
+    def __init__(self, relations, dims):
+        super(TractORMetapathDecoder, self).__init__()
+        self.relations = relations
+        self.vecs = {}
+        for r1 in relations:
+            for r2 in relations[r1]:
+                rel = (r1, r2[1], r2[0])
+                self.vecs[rel] = nn.Parameter(torch.FloatTensor(dims[rel[0]]))
+                init.uniform(self.vecs[rel], a=-6.0/np.sqrt(dims[rel[0]]), b=6.0/np.sqrt(dims[rel[0]]))
+                self.register_parameter("_".join(rel), self.vecs[rel])
+
+    def forward(self, embeds1, embeds2, rels):
+        acts = embeds1
+        for i_rel in rels:
+            acts = acts*self.vecs[i_rel].unsqueeze(1).expand(self.vecs[i_rel].size(0), embeds1.size(1))
+        acts = acts*embeds2
+        acts = 1 - (1-acts).prod(0)
+        return acts
+
+    def project(self, embeds, rel):
+        return embeds*self.vecs[rel].unsqueeze(1).expand(self.vecs[rel].size(0), embeds.size(1))
+
 
 """
 Set intersection operators. (Experimental)

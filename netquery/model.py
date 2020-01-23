@@ -4,7 +4,7 @@ import numpy as np
 
 import random
 from netquery.graph import _reverse_relation, Graph
-from netquery.decoders import BilinearDiagMetapathDecoder, Bilinear2DDiagMetapathDecoder
+from netquery.decoders import BilinearDiagMetapathDecoder, Bilinear2DDiagMetapathDecoder, TractORMetapathDecoder
 from netquery.encoders import DirectEncoder2D
 
 EPS = 10e-6
@@ -242,6 +242,77 @@ class TractORQueryEncoderDecoder(nn.Module):
         assert(type(self.path_dec) == BilinearDiagMetapathDecoder)
 
     def forward(self, formula, queries, source_nodes):
+        # TODO: do we need to consider each anchor only once if they're reused?
+        num_anchs = len(queries[0].anchor_nodes)
+        entity_vecs = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0])
+        for i in range(1, num_anchs):
+            embedding = self.enc.forward([query.anchor_nodes[i] for query in queries], formula.anchor_modes[i])
+            entity_vecs = entity_vecs * embedding
+        # Combined all the vectors, now push through relations
+        return self.path_dec.forward(
+            self.enc.forward(source_nodes, formula.target_mode),
+            entity_vecs,
+            list(set(self.flatten(formula.rels))) # Each relation only considered once
+        )
+
+    def margin_loss(self, formula, queries, hard_negatives=False, margin=1):
+        if not "inter" in formula.query_type and hard_negatives:
+            raise Exception("Hard negative examples can only be used with intersection queries")
+        elif hard_negatives:
+            neg_nodes = [random.choice(query.hard_neg_samples) for query in queries]
+        elif formula.query_type == "1-chain":
+            neg_nodes = [random.choice(self.graph.full_lists[formula.target_mode]) for _ in queries]
+        else:
+            neg_nodes = [random.choice(query.neg_samples) for query in queries]
+
+        affs = self.forward(formula, queries, [query.target_node for query in queries])
+        neg_affs = self.forward(formula, queries, neg_nodes)
+        loss = margin - (affs - neg_affs)
+        loss = torch.clamp(loss, min=0)
+        loss = loss.mean()
+        return loss
+
+
+class TractORSafeQueryEncoderDecoder(nn.Module):
+    """
+    Model for doing learning and reasoning over the TractOR model. No mixture assumed,
+    so we can only deal with safe queries.
+    """
+
+
+    def __init__(self, graph, enc, path_dec):
+        super(TractORSafeQueryEncoderDecoder, self).__init__()
+        self.enc = enc
+        self.graph = graph
+        self.cos = nn.CosineSimilarity
+        self.path_dec = path_dec
+        # TractOR querying requires tractor model
+        assert(type(self.path_dec) == TractORMetapathDecoder)
+
+        self.feature_dict = {'function': 1, 'drug': 2, 'protein': 3, 'disease': 4, 'sideeffects': 5}
+
+    def forward(self, formula, queries, source_nodes):
+        if formula.query_type == '1-chain' or formula.query_type == '3-chain':
+            # 1 Chain is just a call to the decoder
+            # 3-chain is unsafe so we're just going to use link prediction
+            return self.path_dec.forward(
+                self.enc.forward(source_nodes, formula.target_mode),
+                self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0]),
+                formula.rels)
+
+        if formula.query_type == '2-chain':
+            assert(formula.rels[0][2] == formula.rels[1][0])
+            weights = list(self.enc.modules())[self.feature_dict[formula.rels[0][2]]].weight
+            anchs = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0])
+            srcs = self.enc.forward(source_nodes, formula.target_mode)
+            anch_weights = weights.unsqueeze(2) * anchs.unsqueeze(0)
+            anch_probs = 1-(1-anch_weights).prod(1)
+            srcs_weights = weights.unsqueeze(2) * srcs.unsqueeze(0)
+            srcs_probs = 1-(1-srcs_weights).prod(1)
+            join_probs = anch_probs * srcs_probs
+            scores = 1-(1-join_probs).prod(0)
+            return scores
+
         # TODO: do we need to consider each anchor only once if they're reused?
         num_anchs = len(queries[0].anchor_nodes)
         entity_vecs = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0])

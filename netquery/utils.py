@@ -3,7 +3,7 @@ import scipy
 import scipy.stats as stats
 import torch
 from sklearn.metrics import roc_auc_score
-from netquery.decoders import BilinearMetapathDecoder, TransEMetapathDecoder, BilinearDiagMetapathDecoder, SetIntersection, SimpleSetIntersection, Bilinear2DDiagMetapathDecoder
+from netquery.decoders import BilinearMetapathDecoder, TransEMetapathDecoder, BilinearDiagMetapathDecoder, SetIntersection, SimpleSetIntersection, Bilinear2DDiagMetapathDecoder, TractORMetapathDecoder
 from netquery.encoders import DirectEncoder, Encoder, DirectEncoder2D
 from netquery.aggregators import MeanAggregator
 import cPickle as pickle
@@ -137,6 +137,8 @@ def get_metapath_decoder(graph, out_dims, decoder):
         dec = BilinearDiagMetapathDecoder(graph.relations, out_dims)
     elif decoder == "bilinear-2d-diag":
         dec = Bilinear2DDiagMetapathDecoder(graph.relations, out_dims)
+    elif decoder == 'tractor':
+        dec = TractORMetapathDecoder(graph.relations, out_dims)
     else:
         raise Exception("Metapath decoder not recognized.")
     return dec
