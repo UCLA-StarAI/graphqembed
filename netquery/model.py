@@ -292,7 +292,7 @@ class TractORSafeQueryEncoderDecoder(nn.Module):
         self.feature_dict = {'function': 1, 'drug': 2, 'protein': 3, 'disease': 4, 'sideeffects': 5}
 
     def forward(self, formula, queries, source_nodes):
-        if formula.query_type == '1-chain' or formula.query_type == '3-chain':
+        if formula.query_type == '1-chain' or formula.query_type == '3-chain' or formula.query_type != '2-chain':
             # 1 Chain is just a call to the decoder
             # 3-chain is unsafe so we're just going to use link prediction
             return self.path_dec.forward(
@@ -312,19 +312,6 @@ class TractORSafeQueryEncoderDecoder(nn.Module):
             join_probs = anch_probs * srcs_probs
             scores = 1-(1-join_probs).prod(0)
             return scores
-
-        # TODO: do we need to consider each anchor only once if they're reused?
-        num_anchs = len(queries[0].anchor_nodes)
-        entity_vecs = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0])
-        for i in range(1, num_anchs):
-            embedding = self.enc.forward([query.anchor_nodes[i] for query in queries], formula.anchor_modes[i])
-            entity_vecs = entity_vecs * embedding
-        # Combined all the vectors, now push through relations
-        return self.path_dec.forward(
-            self.enc.forward(source_nodes, formula.target_mode),
-            entity_vecs,
-            list(set(self.flatten(formula.rels))) # Each relation only considered once
-        )
 
     def margin_loss(self, formula, queries, hard_negatives=False, margin=1):
         if not "inter" in formula.query_type and hard_negatives:
