@@ -279,6 +279,16 @@ class TractORSafeQueryEncoderDecoder(nn.Module):
     so we can only deal with safe queries.
     """
 
+    def flatten(self, rels):
+        # Inspect my first item, if it's a tuple flatten each thing
+        ret = []
+        for rel in rels:
+            if type(rel[0]) == tuple:
+                ret.extend(self.flatten(rel))
+            else:
+                ret.append(rel)
+
+        return ret
 
     def __init__(self, graph, enc, path_dec):
         super(TractORSafeQueryEncoderDecoder, self).__init__()
@@ -292,13 +302,13 @@ class TractORSafeQueryEncoderDecoder(nn.Module):
         self.feature_dict = {'function': 1, 'drug': 2, 'protein': 3, 'disease': 4, 'sideeffects': 5}
 
     def forward(self, formula, queries, source_nodes):
-        if formula.query_type == '1-chain' or formula.query_type == '3-chain' or formula.query_type != '2-chain':
+        if formula.query_type == '1-chain' or formula.query_type == '3-chain' or formula.query_type == '3-chain_inter' or formula.query_type == '3-inter_chain':
             # 1 Chain is just a call to the decoder
             # 3-chain is unsafe so we're just going to use link prediction
             return self.path_dec.forward(
                 self.enc.forward(source_nodes, formula.target_mode),
                 self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0]),
-                formula.rels)
+                self.flatten(formula.rels))
 
         if formula.query_type == '2-chain':
             assert(formula.rels[0][2] == formula.rels[1][0])
@@ -314,6 +324,24 @@ class TractORSafeQueryEncoderDecoder(nn.Module):
             join_probs = anch_probs * srcs_probs
             scores = 1-(1-join_probs).prod(0)
             return scores
+
+        if formula.query_type == '2-inter' or formula.query_type == '3-inter':
+            pred1 = self.path_dec.forward(self.enc.forward(source_nodes, formula.target_mode),
+                                               self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0]),
+                                               [formula.rels[0]])
+            pred2 = self.path_dec.forward(self.enc.forward(source_nodes, formula.target_mode),
+                                               self.enc.forward([query.anchor_nodes[1] for query in queries], formula.anchor_modes[1]),
+                                               [formula.rels[1]])
+
+            if formula.query_type == '3-inter':
+                pred3 = self.path_dec.forward(self.enc.forward(source_nodes, formula.target_mode),
+                                               self.enc.forward([query.anchor_nodes[2] for query in queries], formula.anchor_modes[2]),
+                                               [formula.rels[2]])
+                return pred1 * pred2 * pred3
+
+            else:
+                return pred1 * pred2
+
 
     def margin_loss(self, formula, queries, hard_negatives=False, margin=1):
         if not "inter" in formula.query_type and hard_negatives:
