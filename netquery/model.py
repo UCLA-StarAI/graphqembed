@@ -302,7 +302,9 @@ class TractORSafeQueryEncoderDecoder(nn.Module):
 
         if formula.query_type == '2-chain':
             assert(formula.rels[0][2] == formula.rels[1][0])
+            # [N, d]
             weights = list(self.enc.modules())[self.feature_dict[formula.rels[0][2]]].weight
+            weights = weights.div(weights.norm(p=2, dim=1, keepdim=True).expand_as(weights))
             anchs = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0])
             srcs = self.enc.forward(source_nodes, formula.target_mode)
             anch_weights = weights.unsqueeze(2) * anchs.unsqueeze(0)
