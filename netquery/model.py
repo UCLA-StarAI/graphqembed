@@ -302,7 +302,7 @@ class TractORSafeQueryEncoderDecoder(nn.Module):
         self.feature_dict = {'function': 1, 'drug': 2, 'protein': 3, 'disease': 4, 'sideeffects': 5}
 
     def forward(self, formula, queries, source_nodes):
-        if formula.query_type == '1-chain' or formula.query_type == '3-chain' or formula.query_type == '3-chain_inter' or formula.query_type == '3-inter_chain':
+        if formula.query_type == '3-chain' or formula.query_type == '3-chain_inter' or formula.query_type == '3-inter_chain':
             # 1 Chain is just a call to the decoder
             # 3-chain is unsafe so we're just going to use link prediction
             return self.path_dec.forward(
@@ -310,16 +310,27 @@ class TractORSafeQueryEncoderDecoder(nn.Module):
                 self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0]),
                 self.flatten(formula.rels))
 
+        if formula.query_type == '1-chain':
+            scores = self.path_dec.forward(
+                self.enc.forward(source_nodes, formula.target_mode),
+                self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0]),
+                self.flatten(formula.rels))
+
+            print torch.min(scores)
+            return scores
+
         if formula.query_type == '2-chain':
             assert(formula.rels[0][2] == formula.rels[1][0])
             # [N, d]
             weights = list(self.enc.modules())[self.feature_dict[formula.rels[0][2]]].weight
             weights = weights.div(weights.norm(p=2, dim=1, keepdim=True).expand_as(weights))
             anchs = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0])
+            anch_rel = self.path_dec.vecs[formula.rels[1]]
             srcs = self.enc.forward(source_nodes, formula.target_mode)
-            anch_weights = weights.unsqueeze(2) * anchs.unsqueeze(0)
+            src_rel = self.path_dec.vecs[formula.rels[0]]
+            anch_weights = weights.unsqueeze(2) * anchs.unsqueeze(0) * anch_rel.unsqueeze(0).unsqueeze(2)
             anch_probs = 1-(1-anch_weights).prod(1)
-            srcs_weights = weights.unsqueeze(2) * srcs.unsqueeze(0)
+            srcs_weights = weights.unsqueeze(2) * srcs.unsqueeze(0) * src_rel.unsqueeze(0).unsqueeze(2)
             srcs_probs = 1-(1-srcs_weights).prod(1)
             join_probs = anch_probs * srcs_probs
             scores = 1-(1-join_probs).prod(0)
