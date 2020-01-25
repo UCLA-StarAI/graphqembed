@@ -75,6 +75,8 @@ if args.opt == "sgd":
     optimizer = optim.SGD(filter(lambda p : p.requires_grad, enc_dec.parameters()), lr=args.lr, momentum=0)
 elif args.opt == "adam":
     optimizer = optim.Adam(filter(lambda p : p.requires_grad, enc_dec.parameters()), lr=args.lr)
+elif args.opt == "adagrad":
+    optimizer = optim.Adagrad(filter(lambda p : p.requires_grad, enc_dec.parameters()), lr=args.lr)
     
 log_file = args.log_dir + "/tractor-{data:s}-{embed_dim:d}-{lr:f}{d2:s}{sf:s}.log".format(
         data=args.data_dir.strip().split("/")[-1],
