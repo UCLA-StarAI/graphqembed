@@ -239,6 +239,7 @@ class TractORQueryEncoderDecoder(nn.Module):
         self.cos = nn.CosineSimilarity
         self.path_dec = path_dec
         # TractOR only supported with distmult for now
+        self.feature_dict = {'function': 1, 'drug': 2, 'protein': 3, 'disease': 4, 'sideeffects': 5}
         assert(type(self.path_dec) == BilinearDiagMetapathDecoder)
 
     def forward(self, formula, queries, source_nodes):
