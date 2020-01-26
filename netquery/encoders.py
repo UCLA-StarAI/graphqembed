@@ -38,7 +38,7 @@ class DirectEncoder(nn.Module):
         """
 
         if offset is None:
-            embeds = self.features(nodes, mode).t() * self.features(nodes, mode).t()
+            embeds = self.features(nodes, mode).t()
             norm = embeds.norm(p=2, dim=0, keepdim=True)
             return embeds.div(norm.expand_as(embeds))
         else:

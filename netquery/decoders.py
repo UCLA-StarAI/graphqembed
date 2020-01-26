@@ -287,11 +287,11 @@ class TractORMetapathDecoder(nn.Module):
                 self.register_parameter("_".join(rel), self.vecs[rel])
 
     def forward(self, embeds1, embeds2, rels):
-        acts = embeds1
+        acts = embeds1**2
         for i_rel in rels:
-            acts = acts*self.vecs[i_rel].unsqueeze(1).expand(self.vecs[i_rel].size(0), embeds1.size(1))
-        acts = acts*embeds2
-        acts = 1 - (1-acts).prod(0)
+            acts = acts*(self.vecs[i_rel].unsqueeze(1).expand(self.vecs[i_rel].size(0), embeds1.size(1))**2)
+        acts = acts*(embeds2**2)
+        acts = 1 - torch.log1p(-acts).sum(0)
         return acts
 
     def project(self, embeds, rel):
