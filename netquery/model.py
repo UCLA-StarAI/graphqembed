@@ -273,7 +273,7 @@ class TractORQueryEncoderDecoder(nn.Module):
 
                 probs1 = 0.5 + 0.5 *src * anch1 * rel1
                 probs2 = 0.5 + 0.5 *src * anch2 * rel2
-                return (probs1 * probs2).sum(0)
+                return probs1.sum(0) * probs2.sum(0)
 
         if formula.query_type == '2-chain':
             assert(formula.rels[0][2] == formula.rels[1][0])
