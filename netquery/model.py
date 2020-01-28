@@ -275,25 +275,25 @@ class TractORQueryEncoderDecoder(nn.Module):
                 probs2 = 0.5 + 0.5 *src * anch2 * rel2
                 return probs1.sum(0) * probs2.sum(0)
 
-        if formula.query_type == '2-chain':
-            assert(formula.rels[0][2] == formula.rels[1][0])
-            # [N, d]
-            weights = list(self.enc.modules())[self.feature_dict[formula.rels[0][2]]].weight
-            weights = weights.div(weights.norm(p=2, dim=1, keepdim=True).expand_as(weights))
-            # [d, b]
-            anchs = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0])
-            # [d]
-            anch_rel = self.path_dec.vecs[formula.rels[1]]
-            # [d, b]
-            srcs = self.enc.forward(source_nodes, formula.target_mode)
-            # [d]
-            src_rel = self.path_dec.vecs[formula.rels[0]]
-            anch_weights = weights.unsqueeze(2) * anchs.unsqueeze(0) * anch_rel.unsqueeze(0).unsqueeze(2)
-            anch_probs = torch.mm(weights * anch_rel, anchs)
-            srcs_probs = torch.mm(weights * src_rel, srcs)
-            join_probs = anch_probs * srcs_probs
-            scores = 1-(1-join_probs).prod(0)
-            return scores
+        # if formula.query_type == '2-chain':
+        #     assert(formula.rels[0][2] == formula.rels[1][0])
+        #     # [N, d]
+        #     weights = list(self.enc.modules())[self.feature_dict[formula.rels[0][2]]].weight
+        #     weights = weights.div(weights.norm(p=2, dim=1, keepdim=True).expand_as(weights))
+        #     # [d, b]
+        #     anchs = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0])
+        #     # [d]
+        #     anch_rel = self.path_dec.vecs[formula.rels[1]]
+        #     # [d, b]
+        #     srcs = self.enc.forward(source_nodes, formula.target_mode)
+        #     # [d]
+        #     src_rel = self.path_dec.vecs[formula.rels[0]]
+        #     anch_weights = weights.unsqueeze(2) * anchs.unsqueeze(0) * anch_rel.unsqueeze(0).unsqueeze(2)
+        #     anch_probs = torch.mm(weights * anch_rel, anchs)
+        #     srcs_probs = torch.mm(weights * src_rel, srcs)
+        #     join_probs = anch_probs * srcs_probs
+        #     scores = 1-(1-join_probs).prod(0)
+        #     return scores
 
         num_anchs = len(queries[0].anchor_nodes)
         entity_vecs = self.enc.forward([query.anchor_nodes[0] for query in queries], formula.anchor_modes[0])
