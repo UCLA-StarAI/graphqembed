@@ -268,8 +268,8 @@ class TractORQueryEncoderDecoder(nn.Module):
                 anch2 = self.enc.forward([query.anchor_nodes[1] for query in queries],
                                                            formula.anchor_modes[1])
 
-                rel1 = self.path_dec.vecs[formula.rels[0]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[0]], anch1.size(1))
-                rel2 = self.path_dec.vecs[formula.rels[1]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[1]], anch1.size(1))
+                rel1 = self.path_dec.vecs[formula.rels[0]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[0]].size(0), anch1.size(1))
+                rel2 = self.path_dec.vecs[formula.rels[1]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[1]].size(0), anch2.size(1))
 
                 probs1 = 0.5 + 0.5 *src * anch1 * rel1
                 probs2 = 0.5 + 0.5 *src * anch2 * rel2
