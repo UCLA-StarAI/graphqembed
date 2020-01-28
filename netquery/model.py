@@ -262,7 +262,18 @@ class TractORQueryEncoderDecoder(nn.Module):
                 return pred1 * pred2 * pred3
 
             else:
-                return pred1 * pred2
+                src = self.enc.forward(source_nodes, formula.target_mode)
+                anch1 = self.enc.forward([query.anchor_nodes[0] for query in queries],
+                                                           formula.anchor_modes[0])
+                anch2 = self.enc.forward([query.anchor_nodes[1] for query in queries],
+                                                           formula.anchor_modes[1])
+
+                rel1 = self.path_dec.vecs[formula.rels[0]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[0]], anch1.size(1))
+                rel2 = self.path_dec.vecs[formula.rels[1]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[1]], anch1.size(1))
+
+                probs1 = 0.5 + 0.5 *src * anch1 * rel1
+                probs2 = 0.5 + 0.5 *src * anch2 * rel2
+                return (probs1 * probs2).sum(0)
 
         if formula.query_type == '2-chain':
             assert(formula.rels[0][2] == formula.rels[1][0])
