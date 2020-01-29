@@ -303,6 +303,25 @@ class TractORQueryEncoderDecoder(nn.Module):
             S = anch1 * rel2
             return R.sum(0) + S.sum(0) + (R*S).sum(0)
 
+        if formula.query_type == '3-chain':
+            src = self.enc.forward(source_nodes, formula.target_mode)
+            anch1 = self.enc.forward([query.anchor_nodes[0] for query in queries],
+                                     formula.anchor_modes[0])
+
+            rel1 = self.path_dec.vecs[formula.rels[0]].unsqueeze(1).expand(
+                self.path_dec.vecs[formula.rels[0]].size(0),
+                anch1.size(1))
+            rel2 = self.path_dec.vecs[formula.rels[1]].unsqueeze(1).expand(
+                self.path_dec.vecs[formula.rels[0]].size(0),
+                anch1.size(1))
+            rel3 = self.path_dec.vecs[formula.rels[2]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[0]].size(0),
+                                                                           anch1.size(1))
+            R = rel1 * anch1
+            S = rel2
+            Q = rel3 * src
+            return R.sum(0) + S.sum(0) + Q.sum(0) + (R * S).sum(0) + (R * Q).sum(0) + (S * Q).sum(0) + (R * S * Q).sum(
+                0)
+
         if formula.query_type == '3-chain_inter':
             src = self.enc.forward(source_nodes, formula.target_mode)
             anch1 = self.enc.forward([query.anchor_nodes[0] for query in queries],
