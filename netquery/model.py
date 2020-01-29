@@ -255,11 +255,25 @@ class TractORQueryEncoderDecoder(nn.Module):
                                           [formula.rels[1]])
 
             if formula.query_type == '3-inter':
-                pred3 = self.path_dec.forward(self.enc.forward(source_nodes, formula.target_mode),
-                                              self.enc.forward([query.anchor_nodes[2] for query in queries],
-                                                               formula.anchor_modes[2]),
-                                              [formula.rels[2]])
-                return pred1 * pred2 * pred3
+
+
+                src = self.enc.forward(source_nodes, formula.target_mode)
+                anch1 = self.enc.forward([query.anchor_nodes[0] for query in queries],
+                                                           formula.anchor_modes[0])
+                anch2 = self.enc.forward([query.anchor_nodes[1] for query in queries],
+                                                           formula.anchor_modes[1])
+                anch3 = self.enc.forward([query.anchor_nodes[2] for query in queries],
+                                                           formula.anchor_modes[2])
+
+                rel1 = self.path_dec.vecs[formula.rels[0]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[0]].size(0), anch1.size(1))
+                rel2 = self.path_dec.vecs[formula.rels[1]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[1]].size(0), anch2.size(1))
+                rel3 = self.path_dec.vecs[formula.rels[1]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[2]].size(0), anch3.size(1))
+
+                probs1 = 0.5 + 0.5 *src * anch1 * rel1
+                probs2 = 0.5 + 0.5 *src * anch2 * rel2
+                probs3 = 0.5 + 0.5 *src * anch3 * rel3
+                return (probs1 * probs2 * probs3).sum(0)
+
 
             else:
                 src = self.enc.forward(source_nodes, formula.target_mode)
@@ -273,7 +287,7 @@ class TractORQueryEncoderDecoder(nn.Module):
 
                 probs1 = 0.5 + 0.5 *src * anch1 * rel1
                 probs2 = 0.5 + 0.5 *src * anch2 * rel2
-                return probs1.sum(0) * probs2.sum(0)
+                return (probs1 * probs2).sum(0)
 
         if formula.query_type == '2-chain':
             src = self.enc.forward(source_nodes, formula.target_mode)
@@ -288,6 +302,45 @@ class TractORQueryEncoderDecoder(nn.Module):
             R = src * rel1
             S = anch1 * rel2
             return R.sum(0) + S.sum(0) + (R*S).sum(0)
+
+        if formula.query_type == '3-chain_inter':
+            src = self.enc.forward(source_nodes, formula.target_mode)
+            anch1 = self.enc.forward([query.anchor_nodes[0] for query in queries],
+                                     formula.anchor_modes[0])
+            anch2 = self.enc.forward([query.anchor_nodes[1] for query in queries],
+                                     formula.anchor_modes[1])
+
+            rel1 = self.path_dec.vecs[formula.rels[1][0]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[0]].size(0),
+                                                                           anch1.size(1))
+            rel2 = self.path_dec.vecs[formula.rels[1][1]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[1]].size(0),
+                                                                           anch2.size(1))
+            rel3 = self.path_dec.vecs[formula.rels[0]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[2]].size(0),
+                                                                           anch2.size(1))
+            R = rel1*anch1
+            S = rel2*anch2
+            Q = rel3*src
+            return R.sum(0) + S.sum(0) + Q.sum(0) + (R*S).sum(0) + (R*Q).sum(0) + (S*Q).sum(0) + (R*S*Q).sum(0)
+
+        if formula.query_type == '3-inter_chain':
+            src = self.enc.forward(source_nodes, formula.target_mode)
+            anch1 = self.enc.forward([query.anchor_nodes[0] for query in queries],
+                                     formula.anchor_modes[0])
+            anch2 = self.enc.forward([query.anchor_nodes[1] for query in queries],
+                                     formula.anchor_modes[1])
+
+            rel1 = self.path_dec.vecs[formula.rels[1][0]].unsqueeze(1).expand(
+                self.path_dec.vecs[formula.rels[0]].size(0),
+                anch1.size(1))
+            rel2 = self.path_dec.vecs[formula.rels[1][1]].unsqueeze(1).expand(
+                self.path_dec.vecs[formula.rels[1]].size(0),
+                anch2.size(1))
+            rel3 = self.path_dec.vecs[formula.rels[0]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[2]].size(0),
+                                                                           anch2.size(1))
+            R = rel2 * anch2
+            S = rel1 * src
+            Q = rel3 * src * anch1
+            return R.sum(0) + S.sum(0) + Q.sum(0) + (R * S).sum(0) + (R * Q).sum(0) + (S * Q).sum(0) + (R * S * Q).sum(0)
+
 
         # if formula.query_type == '2-chain':
         #     assert(formula.rels[0][2] == formula.rels[1][0])
