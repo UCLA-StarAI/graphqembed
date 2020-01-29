@@ -312,9 +312,9 @@ class TractORQueryEncoderDecoder(nn.Module):
 
             rel1 = self.path_dec.vecs[formula.rels[1][0]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[0]].size(0),
                                                                            anch1.size(1))
-            rel2 = self.path_dec.vecs[formula.rels[1][1]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[1]].size(0),
+            rel2 = self.path_dec.vecs[formula.rels[1][1]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[0]].size(0),
                                                                            anch2.size(1))
-            rel3 = self.path_dec.vecs[formula.rels[0]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[2]].size(0),
+            rel3 = self.path_dec.vecs[formula.rels[0]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[0]].size(0),
                                                                            anch2.size(1))
             R = rel1*anch1
             S = rel2*anch2
@@ -332,9 +332,9 @@ class TractORQueryEncoderDecoder(nn.Module):
                 self.path_dec.vecs[formula.rels[0]].size(0),
                 anch1.size(1))
             rel2 = self.path_dec.vecs[formula.rels[1][1]].unsqueeze(1).expand(
-                self.path_dec.vecs[formula.rels[1]].size(0),
+                self.path_dec.vecs[formula.rels[0]].size(0),
                 anch2.size(1))
-            rel3 = self.path_dec.vecs[formula.rels[0]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[2]].size(0),
+            rel3 = self.path_dec.vecs[formula.rels[0]].unsqueeze(1).expand(self.path_dec.vecs[formula.rels[0]].size(0),
                                                                            anch2.size(1))
             R = rel2 * anch2
             S = rel1 * src
