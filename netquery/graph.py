@@ -331,7 +331,10 @@ class Graph():
                 while (neigh_1, rel_1) == (neigh_2, rel_2):
                     rel_2, neigh_2 = random.choice(self.flat_adj_lists[mode][node])
                 edge_2 = (node, rel_2, neigh_2)
-                return ("3-inter_chain", edge_1, (edge_2, self.sample_edge(neigh_2, rel_2[-1])))
+                try:
+                    return ("3-inter_chain", edge_1, (edge_2, self.sample_edge(neigh_2, rel_2[-1])))
+                except IndexError:
+                    return None
             elif num_edges == 3:
                 rel_1, neigh_1 = random.choice(self.flat_adj_lists[mode][node])
                 edge_1 = (node, rel_1, neigh_1)
@@ -354,7 +357,10 @@ class Graph():
             if num_edges == 1:
                 rel, neigh = random.choice(self.flat_adj_lists[mode][node])
                 edge = (node, rel, neigh)
-                return ("2-chain", edge, self.sample_edge(neigh, rel[-1]))
+                try:
+                    return ("2-chain", edge, self.sample_edge(neigh, rel[-1]))
+                except IndexError:
+                    return None
             elif num_edges == 2:
                 rel_1, neigh_1 = random.choice(self.flat_adj_lists[mode][node])
                 edge_1 = (node, rel_1, neigh_1)
@@ -399,7 +405,10 @@ class Graph():
                 while (neigh_1, rel_1) == (neigh_2, rel_2):
                     rel_2, neigh_2 = random.choice(self.flat_adj_lists[mode][node])
                 edge_2 = (node, rel_2, neigh_2)
-                return ("3-inter_chain", edge_1, (edge_2, self.sample_edge(neigh_2, rel_2[-1])))
+                try:
+                    return ("3-inter_chain", edge_1, (edge_2, self.sample_edge(neigh_2, rel_2[-1])))
+                except IndexError:
+                    return None
             elif num_edges == 3:
                 rel_1, neigh_1 = random.choice(self.flat_adj_lists[mode][node])
                 edge_1 = (node, rel_1, neigh_1)
