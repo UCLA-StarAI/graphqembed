@@ -28,7 +28,7 @@ def load_from_dir(dir):
     relations = {"all": [("all", x) for x in rels]}
     edges = defaultdict(set)
     used_nodes = {"all": set()}
-    adj_lists = {("all", rel[1], "all"): defaultdict(list) for rel in relations["all"]}
+    adj_lists = {("all", rel[1], "all"): defaultdict(set) for rel in relations["all"]}
 
     for line in lines:
         h,r,t = line
@@ -37,7 +37,7 @@ def load_from_dir(dir):
         if (h,t) in edges[relation]:
             continue
         # Update adjacency lists
-        adj_lists[relation][h].append(t)
+        adj_lists[relation][h].add(t)
         # Update edges
         edges[relation].add((h,t))
         # Update used nodes
@@ -49,9 +49,13 @@ def load_from_dir(dir):
         print mode, len(used_set)
     for relation, count in edges.iteritems():
         print relation, len(count)
+
+    print relations
+    print adj_lists.keys()
+    print adj_lists[('all', '_similar_to', 'all')].keys()
     return relations, adj_lists, node_maps
 
 if __name__ == "__main__":
     graph_info = load_from_dir("/Users/tal/Documents/py-kbc/data/wn18rr")
-    pickle.dump(graph_info, open("/Users/tal/Documents/graphqembed/wn18rr_data/data.pkl", "w"))
+    pickle.dump(graph_info, open("/Users/tal/Documents/graphqembed/wn18rr_data/graph_data.pkl", "w"))
     #print _get_valid_disease_chemical()

@@ -422,7 +422,10 @@ class Graph():
             if num_edges == 1:
                 rel, neigh = random.choice(self.flat_adj_lists[mode][node])
                 edge = (node, rel, neigh)
-                return ("2-chain", edge, self.sample_edge(neigh, rel[-1]))
+                try:
+                    return ("2-chain", edge, self.sample_edge(neigh, rel[-1]))
+                except IndexError:
+                    return None
             elif num_edges == 2:
                 rel_1, neigh_1 = random.choice(self.flat_adj_lists[mode][node])
                 edge_1 = (node, rel_1, neigh_1)

@@ -103,7 +103,9 @@ def make_train_test_query_data(data_dir):
 
 
 if __name__ == "__main__":
-    #make_train_test_query_data("/dfs/scratch0/nqe-bio/")
-    #make_train_test_edge_data("/dfs/scratch0/nqe-bio/")
-    sample_new_clean("/dfs/scratch0/nqe-bio/")
+    make_train_test_query_data("/Users/tal/Documents/graphqembed/wn18rr_data/")
+    make_train_test_edge_data("/Users/tal/Documents/graphqembed/wn18rr_data/")
+    # make_train_test_query_data("/Users/tal/Documents/graphqembed/bio_data_copy/")
+    # make_train_test_edge_data("/Users/tal/Documents/graphqembed/bio_data_copy/")
+    # sample_new_clean("/dfs/scratch0/nqe-bio/")
     #clean_test()
