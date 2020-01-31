@@ -59,7 +59,7 @@ def make_train_test_edge_data(data_dir):
     print "Getting negative samples..."
     val_test_edge_negsamples = [graph.get_negative_edge_samples(e, 100) for e in val_test_edges]
     print "Making and storing test queries."
-    val_test_edge_queries = [Query(("1-chain", val_test_edges[i]), val_test_edge_negsamples[i], None, 100) for i in range(split_point)]
+    val_test_edge_queries = [Query(("1-chain", val_test_edges[i]), val_test_edge_negsamples[i], None, 100, keep_graph=True) for i in range(split_point)]
     val_split_point = int(0.1*len(val_test_edge_queries))
     val_queries = val_test_edge_queries[:val_split_point]
     test_queries = val_test_edge_queries[val_split_point:]
@@ -70,7 +70,7 @@ def make_train_test_edge_data(data_dir):
     graph.remove_edges(val_test_edges)
     print "Making and storing train queries."
     train_edges = graph.get_all_edges()
-    train_queries = [Query(("1-chain", e), None, None) for e in train_edges]
+    train_queries = [Query(("1-chain", e), None, None, keep_graph=True) for e in train_edges]
     pickle.dump([q.serialize() for q in train_queries], open(data_dir+"/train_edges.pkl", "w"), protocol=pickle.HIGHEST_PROTOCOL)
 
 def _discard_negatives(file_name, small_prop=0.9):
@@ -103,8 +103,8 @@ def make_train_test_query_data(data_dir):
 
 
 if __name__ == "__main__":
-    make_train_test_query_data("/Users/tal/Documents/graphqembed/wn18rr_data/")
     make_train_test_edge_data("/Users/tal/Documents/graphqembed/wn18rr_data/")
+    make_train_test_query_data("/Users/tal/Documents/graphqembed/wn18rr_data/")
     # make_train_test_query_data("/Users/tal/Documents/graphqembed/bio_data_copy/")
     # make_train_test_edge_data("/Users/tal/Documents/graphqembed/bio_data_copy/")
     # sample_new_clean("/dfs/scratch0/nqe-bio/")
